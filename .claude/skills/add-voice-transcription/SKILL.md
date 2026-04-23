@@ -149,6 +149,32 @@ if (audioAtt && !serialized.text?.trim()) {
 }
 ```
 
+### Voice echo in router (`src/router.ts`)
+
+In the `deliverToAgent()` function, find the `writeSessionMessage(...)` call. Immediately after the closing `});` of that call, add:
+
+```typescript
+  // Echo voice transcript so the user sees what was heard
+  const parsed = JSON.parse(event.message.content);
+  const voiceText: unknown = typeof parsed === 'string' ? parsed : parsed?.text;
+  if (typeof voiceText === 'string') {
+    const voiceMatch = voiceText.match(/^\[Voice:\s+(.+)\]$/);
+    if (voiceMatch?.[1]) {
+      const echoAdapter = getChannelAdapter(deliveryAddr.channelType ?? event.channelType);
+      if (echoAdapter) {
+        echoAdapter
+          .deliver(deliveryAddr.platformId, deliveryAddr.threadId, {
+            kind: 'chat',
+            content: { text: `You said: "${voiceMatch[1]}"` },
+          })
+          .catch((err) => log.warn('Failed to echo voice transcript', { err }));
+      }
+    }
+  }
+```
+
+`getChannelAdapter` is already imported at the top of `router.ts`.
+
 ### Build and restart
 
 ```bash
