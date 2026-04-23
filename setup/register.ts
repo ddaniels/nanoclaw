@@ -40,6 +40,8 @@ interface RegisterArgs {
   assistantName: string;
   /** Session mode: 'shared' (one session per channel) or 'per-thread' */
   sessionMode: string;
+  /** Whether this is a group chat (true) or DM (false). Affects sender policy defaults. */
+  isGroup: boolean;
 }
 
 function parseArgs(args: string[]): RegisterArgs {
@@ -52,6 +54,7 @@ function parseArgs(args: string[]): RegisterArgs {
     requiresTrigger: false,
     assistantName: 'Andy',
     sessionMode: 'shared',
+    isGroup: false,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -79,6 +82,9 @@ function parseArgs(args: string[]): RegisterArgs {
         break;
       case '--session-mode':
         result.sessionMode = args[++i] || 'shared';
+        break;
+      case '--is-group':
+        result.isGroup = true;
         break;
     }
   }
@@ -110,13 +116,6 @@ export async function run(args: string[]): Promise<void> {
       LOG: 'logs/setup.log',
     });
     process.exit(4);
-  }
-
-  // Chat SDK adapters prefix platform IDs with the channel type
-  // (e.g. "telegram:123", "discord:guild:channel"). Normalize here so
-  // the stored ID always matches what the adapter sends at runtime.
-  if (!parsed.platformId.startsWith(`${parsed.channel}:`)) {
-    parsed.platformId = `${parsed.channel}:${parsed.platformId}`;
   }
 
   log.info('Registering channel', parsed);
@@ -152,8 +151,8 @@ export async function run(args: string[]): Promise<void> {
       channel_type: parsed.channel,
       platform_id: parsed.platformId,
       name: parsed.name,
-      is_group: 1,
-      unknown_sender_policy: 'strict',
+      is_group: parsed.isGroup ? 1 : 0,
+      unknown_sender_policy: parsed.isGroup ? 'strict' : 'public',
       created_at: new Date().toISOString(),
     });
     messagingGroup = getMessagingGroupByPlatform(parsed.channel, parsed.platformId)!;
@@ -167,18 +166,14 @@ export async function run(args: string[]): Promise<void> {
   if (!existing) {
     newlyWired = true;
     const mgaId = generateId('mga');
-    const triggerRules = parsed.trigger
-      ? JSON.stringify({
-          pattern: parsed.trigger,
-          requiresTrigger: parsed.requiresTrigger,
-        })
-      : null;
     createMessagingGroupAgent({
       id: mgaId,
       messaging_group_id: messagingGroup.id,
       agent_group_id: agentGroup.id,
-      trigger_rules: triggerRules,
-      response_scope: 'all',
+      engage_mode: 'pattern',
+      engage_pattern: parsed.trigger || '.',
+      sender_scope: 'all',
+      ignored_message_policy: 'drop',
       session_mode: parsed.sessionMode,
       priority: 0,
       created_at: new Date().toISOString(),

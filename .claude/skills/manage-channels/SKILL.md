@@ -47,8 +47,13 @@ pnpm exec tsx setup/index.ts --step register -- \
   --platform-id "<id>" --name "<name>" \
   --folder "<folder>" --channel "<type>" \
   --session-mode "<shared|agent-shared|per-thread>" \
-  --assistant-name "<name>"
+  --assistant-name "<name>" \
+  [--is-group]
 ```
+
+Add `--is-group` for group chats. Omit it for DMs. This controls:
+- `is_group` in the messaging_groups row (0 for DMs, 1 for groups)
+- `unknown_sender_policy` default (`public` for DMs, `strict` for groups)
 
 The `register` step creates the agent group (reusing it if the folder already exists), the messaging group, and the wiring row. `createMessagingGroupAgent` auto-creates the companion `agent_destinations` row so the agent can address the channel by name — no separate destination step needed.
 
@@ -65,7 +70,8 @@ When adding another group/chat on an already-configured platform (e.g. a second 
      --platform-id "<PLATFORM_ID>" --name "<group-name>" \
      --folder "<folder>" --channel "telegram" \
      --session-mode "<shared|agent-shared|per-thread>" \
-     --assistant-name "<name>"
+     --assistant-name "<name>" \
+     [--is-group]
    ```
 
 2. **Other channels:** read the channel's SKILL.md `## Channel Info` for terminology and how-to-find-id. Ask for the new group/chat ID, ask the isolation question, then register. No package or credential changes needed.

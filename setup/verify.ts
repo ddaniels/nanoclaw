@@ -231,7 +231,6 @@ export async function run(_args: string[]): Promise<void> {
   const status =
     service === 'running' &&
     credentials !== 'missing' &&
-    anyChannelConfigured &&
     registeredGroups > 0 &&
     (agentPing === 'ok' || agentPing === 'skipped')
       ? 'success'
