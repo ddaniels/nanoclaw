@@ -30,16 +30,16 @@ Otherwise continue. Every step below is safe to re-run.
 ### 1. Fetch the skill branch
 
 ```bash
-git fetch fork skill/voice-transcription
+git fetch origin skill/voice-transcription
 ```
 
 ### 2. Copy the module files
 
 ```bash
-git show fork/skill/voice-transcription:scripts/transcription_worker.py > scripts/transcription_worker.py
+git show origin/skill/voice-transcription:scripts/transcription_worker.py > scripts/transcription_worker.py
 mkdir -p src/modules/transcription
-git show fork/skill/voice-transcription:src/modules/transcription/index.ts > src/modules/transcription/index.ts
-git show fork/skill/voice-transcription:src/modules/transcription/sidecar.ts > src/modules/transcription/sidecar.ts
+git show origin/skill/voice-transcription:src/modules/transcription/index.ts > src/modules/transcription/index.ts
+git show origin/skill/voice-transcription:src/modules/transcription/sidecar.ts > src/modules/transcription/sidecar.ts
 ```
 
 ### 3. Append the module barrel import
