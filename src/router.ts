@@ -433,6 +433,24 @@ async function deliverToAgent(
     trigger: wake ? 1 : 0,
   });
 
+  // Echo voice transcript so the user sees what was heard
+  const parsed = JSON.parse(event.message.content);
+  const voiceText: unknown = typeof parsed === 'string' ? parsed : parsed?.text;
+  if (typeof voiceText === 'string') {
+    const voiceMatch = voiceText.match(/^\[Voice:\s+(.+)\]$/);
+    if (voiceMatch?.[1]) {
+      const echoAdapter = getChannelAdapter(deliveryAddr.channelType ?? event.channelType);
+      if (echoAdapter) {
+        echoAdapter
+          .deliver(deliveryAddr.platformId, deliveryAddr.threadId, {
+            kind: 'chat',
+            content: { text: `You said: "${voiceMatch[1]}"` },
+          })
+          .catch((err) => log.warn('Failed to echo voice transcript', { err }));
+      }
+    }
+  }
+
   log.info('Message routed', {
     sessionId: session.id,
     agentGroup: agent.agent_group_id,
