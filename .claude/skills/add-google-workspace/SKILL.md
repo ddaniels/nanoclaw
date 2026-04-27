@@ -1,15 +1,15 @@
 ---
 name: add-google-workspace
-description: Add read-only Gmail and Google Calendar MCP tools to the agent. Uses OneCLI apps for OAuth — no secrets in the container, no manual token refresh.
+description: Add Gmail (read-only) and Google Calendar (read + write) MCP tools to the agent. Uses OneCLI apps for OAuth — no secrets in the container, no manual token refresh.
 ---
 
 # Add Google Workspace (Gmail + Calendar)
 
-Adds read-only access to Gmail and Google Calendar via two lightweight MCP servers inside the agent container. OneCLI handles OAuth (token storage, automatic refresh, per-request injection) — the container never sees credentials.
+Adds Gmail (read-only) and Google Calendar (read + write) access via two lightweight MCP servers inside the agent container. OneCLI handles OAuth (token storage, automatic refresh, per-request injection) — the container never sees credentials.
 
 **Gmail tools:** `gmail_search_threads`, `gmail_get_thread`, `gmail_get_message`, `gmail_get_attachment`, `gmail_list_labels`
 
-**Calendar tools:** `calendar_list_calendars`, `calendar_list_events`, `calendar_get_event`
+**Calendar tools:** `calendar_list_calendars`, `calendar_list_events`, `calendar_get_event`, `calendar_create_event`, `calendar_update_event`, `calendar_delete_event`
 
 ## Prerequisites
 
@@ -65,6 +65,8 @@ onecli apps configure --provider google-calendar \
 Then tell the user:
 
 > Open http://127.0.0.1:10254/connections in your browser. Click Connect for both Gmail and Google Calendar. Sign in with the Google account you want the agent to read.
+>
+> **Calendar scope:** the OAuth consent screen must grant `https://www.googleapis.com/auth/calendar.events` (or full `https://www.googleapis.com/auth/calendar`), not just `calendar.readonly` — otherwise `calendar_create_event` / `calendar_update_event` / `calendar_delete_event` will return 403. If a previously-connected Google Calendar app only has `.readonly` scope, disconnect and reconnect to upgrade.
 
 Wait for the user to confirm both are connected, then verify:
 
@@ -106,7 +108,7 @@ Ask which agent group should get Gmail/Calendar access. Add to that group's `gro
       "command": "bun",
       "args": ["run", "/app/src/calendar-mcp-stdio.ts"],
       "env": {},
-      "instructions": "Read-only Google Calendar access. Use calendar_list_events to check upcoming events (defaults to next 7 days on primary calendar), calendar_get_event for details on a specific event, calendar_list_calendars to see all calendars."
+      "instructions": "Google Calendar (read + write). Reads: calendar_list_calendars, calendar_list_events (defaults to next 7 days on primary), calendar_get_event. Writes: calendar_create_event, calendar_update_event (PATCH — only send fields you want to change), calendar_delete_event. Always call get_current_time before scheduling so dates are not guessed. RFC3339 with timezone offset preferred (e.g. \"2026-04-28T15:00:00-05:00\"); pass timeZone for offset-less dateTimes; use \"YYYY-MM-DD\" for all-day. Set sendUpdates (\"all\" | \"externalOnly\" | \"none\") on writes that touch attendees."
     }
   }
 }
@@ -143,7 +145,9 @@ The MCP servers make HTTP requests to `gmail.googleapis.com` and `www.googleapis
 
 **401 from Gmail/Calendar API** — the app connection may have expired. Check `onecli apps get --provider gmail` — if disconnected, reconnect via the web UI.
 
-**Agent says tools aren't available** — the SDK session was cached from before the MCP servers were added. Clear `session_state` (Phase 6 step 1) and restart the container.
+**403 on Calendar writes (`calendar_create_event` / `_update_event` / `_delete_event`)** — the connected Google Calendar app only has `.readonly` scope. Disconnect Google Calendar at http://127.0.0.1:10254/connections and reconnect, granting `calendar.events` (or full `calendar`) on the consent screen. Reads will keep working in the meantime.
+
+**Agent says tools aren't available** — the SDK session was cached from before the MCP servers were added. Clear `session_state` (Phase 6 step 2) and restart the container.
 
 **Agent gets approval popups for every request** — the agent hasn't been granted app access in the OneCLI web UI. See Phase 4.
 
