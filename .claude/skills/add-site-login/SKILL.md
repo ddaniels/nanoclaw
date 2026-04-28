@@ -28,12 +28,11 @@ every future session for that agent group can load the state.
 
 1. The host has Chrome installed (default macOS path, or `CHROME_PATH` in
    `.env`). The same path used by `/x-integration` works.
-2. Playwright is installed in the project. If not:
-   ```bash
-   pnpm ls playwright || pnpm install -D playwright
-   ```
-3. The host has a graphical display. Headless servers cannot run this — see
+2. The host has a graphical display. Headless servers cannot run this — see
    "Headless host fallback" below.
+
+(Playwright ships as a project devDependency, so `pnpm install` already
+provides it — no extra install step.)
 
 ## Flow
 
@@ -91,14 +90,10 @@ Run this skill again with the same URL (and same label if used). The capture
 script overwrites the existing file and updates the `savedAt` timestamp in
 the index.
 
-## Removing a saved login
+## Listing and removing saved logins
 
-```bash
-rm groups/<folder>/browser-states/<domain>.json
-# Then edit groups/<folder>/browser-states/index.json to drop the entry.
-```
-
-(A `/remove-site-login` skill could be added later if this becomes common.)
+- `/list-site-logins` — show what's saved for an agent group.
+- `/remove-site-login` — delete a saved login (file + index entry).
 
 ## Headless host fallback
 

@@ -38,18 +38,26 @@ type Index = Record<string, IndexEntry>;
 
 const PROJECT_ROOT = process.env.NANOCLAW_ROOT || process.cwd();
 const DB_PATH = path.join(PROJECT_ROOT, 'data', 'v2.db');
-const CHROME_PATH =
-  process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const CHROME_PATH = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
 function parseArgs(argv: string[]): Args {
   const out: Partial<Args> = {};
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
     const value = argv[i + 1];
-    if (flag === '--group') { out.group = value; i++; }
-    else if (flag === '--url') { out.url = value; i++; }
-    else if (flag === '--label') { out.label = value; i++; }
-    else if (flag === '--domain') { out.domain = value; i++; }
+    if (flag === '--group') {
+      out.group = value;
+      i++;
+    } else if (flag === '--url') {
+      out.url = value;
+      i++;
+    } else if (flag === '--label') {
+      out.label = value;
+      i++;
+    } else if (flag === '--domain') {
+      out.domain = value;
+      i++;
+    }
   }
   if (!out.group || !out.url) {
     console.error('Usage: capture.ts --group <id> --url <login-url> [--label <label>] [--domain <override>]');
@@ -93,7 +101,12 @@ function writeIndex(indexPath: string, index: Index): void {
 
 async function waitForEnter(prompt: string): Promise<void> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise(resolve => rl.question(prompt, () => { rl.close(); resolve(); }));
+  return new Promise((resolve) =>
+    rl.question(prompt, () => {
+      rl.close();
+      resolve();
+    }),
+  );
 }
 
 async function main(): Promise<void> {
@@ -154,32 +167,39 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const page = context.pages()[0] || await context.newPage();
-  await page.goto(args.url, { waitUntil: 'domcontentloaded' }).catch(err => {
-    console.warn(`Initial navigation warning (the page may still be usable): ${err instanceof Error ? err.message : String(err)}`);
-  });
+  try {
+    const page = context.pages()[0] || (await context.newPage());
+    await page.goto(args.url, { waitUntil: 'domcontentloaded' }).catch((err) => {
+      console.warn(
+        `Initial navigation warning (the page may still be usable): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    });
 
-  console.log('Chrome is open. Log in to the site, complete any 2FA / captcha,');
-  console.log('and once you can see your logged-in home page or dashboard,');
-  console.log('come back here and press Enter.\n');
+    console.log('Chrome is open. Log in to the site, complete any 2FA / captcha,');
+    console.log('and once you can see your logged-in home page or dashboard,');
+    console.log('come back here and press Enter.\n');
 
-  await waitForEnter('Press Enter when fully logged in... ');
+    await waitForEnter('Press Enter when fully logged in... ');
 
-  console.log('\nCapturing session state...');
-  await context.storageState({ path: outputPath });
-  fs.chmodSync(outputPath, 0o600);
+    console.log('\nCapturing session state...');
+    await context.storageState({ path: outputPath });
+    fs.chmodSync(outputPath, 0o600);
 
-  const index = readIndex(indexPath);
-  index[indexKey] = {
-    file: filename,
-    url: args.url,
-    ...(label ? { label } : {}),
-    savedAt: new Date().toISOString(),
-  };
-  writeIndex(indexPath, index);
-
-  await context.close();
-  fs.rmSync(tempProfile, { recursive: true, force: true });
+    const index = readIndex(indexPath);
+    index[indexKey] = {
+      file: filename,
+      url: args.url,
+      ...(label ? { label } : {}),
+      savedAt: new Date().toISOString(),
+    };
+    writeIndex(indexPath, index);
+  } finally {
+    // Always tear down the browser context and temp profile, even if the
+    // storageState write or index update threw. Otherwise a leftover Chrome
+    // process holds the temp dir, and rerunning the script piles up zombies.
+    await context.close().catch(() => {});
+    fs.rmSync(tempProfile, { recursive: true, force: true });
+  }
 
   console.log(`\n✓ Saved ${path.relative(PROJECT_ROOT, outputPath)} (mode 0600)`);
   console.log(`✓ Updated ${path.relative(PROJECT_ROOT, indexPath)}`);
@@ -189,7 +209,7 @@ async function main(): Promise<void> {
   console.log(`account on ${domain} until the cookies expire.`);
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('capture failed:', err instanceof Error ? err.stack || err.message : String(err));
   process.exit(1);
 });
