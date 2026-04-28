@@ -148,7 +148,10 @@ export class S3StorageBackend implements StorageBackend {
     fs.mkdirSync(path.dirname(destPath), { recursive: true });
     await new Promise<void>((resolve, reject) => {
       const writeStream = fs.createWriteStream(destPath);
-      resp.Body!.pipe(writeStream).on('finish', () => resolve()).on('error', reject);
+      resp
+        .Body!.pipe(writeStream)
+        .on('finish', () => resolve())
+        .on('error', reject);
     });
   }
 }

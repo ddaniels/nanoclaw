@@ -66,12 +66,7 @@ import { runMigrations } from '../db/migrations/index.js';
 import { createAgentGroup } from '../db/agent-groups.js';
 import { createMessagingGroup, createMessagingGroupAgent } from '../db/messaging-groups.js';
 import { createSession } from '../db/sessions.js';
-import {
-  initSessionFolder,
-  inboundDbPath,
-  outboundDbPath,
-  sessionDir,
-} from '../session-manager.js';
+import { initSessionFolder, inboundDbPath, outboundDbPath, sessionDir } from '../session-manager.js';
 import { insertMessage, openInboundDb } from '../db/session-db.js';
 
 import { enumerateBackupTargets } from './inventory.js';
@@ -411,7 +406,7 @@ describe('scheduler — maybeRunDailyBackup', () => {
     expect(decision.reason).toMatch(/before/i);
   });
 
-  it('skips when an attempt already happened in today\'s window', async () => {
+  it("skips when an attempt already happened in today's window", async () => {
     const { decideShouldBackup } = await import('./scheduler.js');
     const decision = decideShouldBackup({
       now: new Date('2026-04-28T10:00:00Z'),
@@ -516,14 +511,11 @@ describe('restore — full', () => {
 
     expect(fs.existsSync(inboundDbPath('ag-alpha', 'sess-alpha-1'))).toBe(true);
     expect(fs.existsSync(outboundDbPath('ag-alpha', 'sess-alpha-1'))).toBe(true);
+    expect(fs.readFileSync(path.join(TEST_GROUPS_DIR, 'alpha-group', 'CLAUDE.local.md'), 'utf-8')).toContain(
+      'Alpha memory',
+    );
     expect(
-      fs.readFileSync(path.join(TEST_GROUPS_DIR, 'alpha-group', 'CLAUDE.local.md'), 'utf-8'),
-    ).toContain('Alpha memory');
-    expect(
-      fs.readFileSync(
-        path.join(sessionDir('ag-alpha', 'sess-alpha-1'), 'inbox', 'msg-001', 'attachment.txt'),
-        'utf-8',
-      ),
+      fs.readFileSync(path.join(sessionDir('ag-alpha', 'sess-alpha-1'), 'inbox', 'msg-001', 'attachment.txt'), 'utf-8'),
     ).toBe('attachment payload for sess-alpha-1\n');
   });
 });
@@ -650,9 +642,7 @@ describe('restore — refusal', () => {
 
     // Mark a session as running. restore should refuse before mutating
     // anything.
-    getDb()
-      .prepare("UPDATE sessions SET container_status = 'running' WHERE id = ?")
-      .run('sess-alpha-1');
+    getDb().prepare("UPDATE sessions SET container_status = 'running' WHERE id = ?").run('sess-alpha-1');
 
     await expect(restoreArchive({ archiveName: backup.archiveName!, from: 'local' })).rejects.toThrow(
       /running container/i,

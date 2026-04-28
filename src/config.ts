@@ -104,9 +104,8 @@ export const BACKUP_LOCAL_DIR =
   envValue('BACKUP_LOCAL_DIR') || path.join(HOME_DIR, 'Backups', 'nanoclaw', INSTALL_SLUG);
 
 const parsedBackupHour = parseInt(envValue('BACKUP_HOUR') ?? '4', 10);
-export const BACKUP_HOUR = Number.isFinite(parsedBackupHour) && parsedBackupHour >= 0 && parsedBackupHour <= 23
-  ? parsedBackupHour
-  : 4;
+export const BACKUP_HOUR =
+  Number.isFinite(parsedBackupHour) && parsedBackupHour >= 0 && parsedBackupHour <= 23 ? parsedBackupHour : 4;
 
 export const BACKUP_S3_BUCKET = envValue('BACKUP_S3_BUCKET');
 export const BACKUP_S3_PREFIX = envValue('BACKUP_S3_PREFIX') || INSTALL_SLUG;

@@ -32,12 +32,12 @@ export function decideShouldBackup(args: DecideShouldBackupArgs): DecideShouldBa
   const todayWindowStart = startOfDailyWindow(now, backupHour, timezone);
 
   if (now.getTime() < todayWindowStart.getTime()) {
-    return { run: false, reason: 'before today\'s backup window' };
+    return { run: false, reason: "before today's backup window" };
   }
   if (lastAttemptAt) {
     const last = new Date(lastAttemptAt).getTime();
     if (last >= todayWindowStart.getTime()) {
-      return { run: false, reason: 'already attempted in today\'s window' };
+      return { run: false, reason: "already attempted in today's window" };
     }
   }
   return { run: true, reason: 'eligible' };

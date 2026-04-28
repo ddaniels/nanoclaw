@@ -62,9 +62,7 @@ function emptyPlannedRows(): PlannedRows {
 function ensureNoLiveContainers(): void {
   const live = getRunningSessions();
   if (live.length > 0) {
-    throw new Error(
-      `Refusing restore: ${live.length} session(s) report a running container. Stop the host first.`,
-    );
+    throw new Error(`Refusing restore: ${live.length} session(s) report a running container. Stop the host first.`);
   }
 }
 
@@ -85,9 +83,7 @@ export async function restoreArchive(opts: RestoreOptions): Promise<RestoreResul
   const fetched = await fetchToLocal(opts.archiveName, opts.from);
 
   const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-restore-extract-'));
-  const filterPrefixes = opts.onlyAgentGroupId
-    ? ['central', `agent-groups/${opts.onlyAgentGroupId}`]
-    : undefined;
+  const filterPrefixes = opts.onlyAgentGroupId ? ['central', `agent-groups/${opts.onlyAgentGroupId}`] : undefined;
   await extractArchive(fetched, stagingDir, { filterPrefixes });
 
   const manifest = readManifestFromExtracted(stagingDir);
@@ -166,9 +162,7 @@ async function restorePerAgent(args: PerAgentArgs): Promise<RestoreResult> {
     const liveMessagingGroupIds = new Set(
       (live.prepare('SELECT id FROM messaging_groups').all() as Array<{ id: string }>).map((r) => r.id),
     );
-    const liveUserIds = new Set(
-      (live.prepare('SELECT id FROM users').all() as Array<{ id: string }>).map((r) => r.id),
-    );
+    const liveUserIds = new Set((live.prepare('SELECT id FROM users').all() as Array<{ id: string }>).map((r) => r.id));
 
     // Collect rows from the staged DB.
     const agentRow = src.prepare('SELECT * FROM agent_groups WHERE id = ?').get(onlyAgentGroupId) as
@@ -178,16 +172,16 @@ async function restorePerAgent(args: PerAgentArgs): Promise<RestoreResult> {
       throw new Error(`Agent group ${onlyAgentGroupId} not in archive`);
     }
 
-    const sessions = src
-      .prepare('SELECT * FROM sessions WHERE agent_group_id = ?')
-      .all(onlyAgentGroupId) as Array<Record<string, unknown>>;
+    const sessions = src.prepare('SELECT * FROM sessions WHERE agent_group_id = ?').all(onlyAgentGroupId) as Array<
+      Record<string, unknown>
+    >;
     const mgaRows = src
       .prepare('SELECT * FROM messaging_group_agents WHERE agent_group_id = ?')
       .all(onlyAgentGroupId) as Array<Record<string, unknown>>;
     const memberRows = tableExistsIn(src, 'agent_group_members')
-      ? (src
-          .prepare('SELECT * FROM agent_group_members WHERE agent_group_id = ?')
-          .all(onlyAgentGroupId) as Array<Record<string, unknown>>)
+      ? (src.prepare('SELECT * FROM agent_group_members WHERE agent_group_id = ?').all(onlyAgentGroupId) as Array<
+          Record<string, unknown>
+        >)
       : [];
     const roleRows = tableExistsIn(src, 'user_roles')
       ? (src.prepare('SELECT * FROM user_roles WHERE agent_group_id = ?').all(onlyAgentGroupId) as Array<
@@ -195,9 +189,9 @@ async function restorePerAgent(args: PerAgentArgs): Promise<RestoreResult> {
         >)
       : [];
     const senderApprovalRows = tableExistsIn(src, 'pending_sender_approvals')
-      ? (src
-          .prepare('SELECT * FROM pending_sender_approvals WHERE agent_group_id = ?')
-          .all(onlyAgentGroupId) as Array<Record<string, unknown>>)
+      ? (src.prepare('SELECT * FROM pending_sender_approvals WHERE agent_group_id = ?').all(onlyAgentGroupId) as Array<
+          Record<string, unknown>
+        >)
       : [];
 
     // FK orphan detection — track which rows would dangle.
@@ -272,9 +266,7 @@ async function restorePerAgent(args: PerAgentArgs): Promise<RestoreResult> {
       const keepIds = new Set(keptSessions.map((s) => String(s.id)));
       void sessionIds;
       if (tableExistsIn(src, 'pending_questions')) {
-        const pq = src
-          .prepare('SELECT * FROM pending_questions')
-          .all() as Array<Record<string, unknown>>;
+        const pq = src.prepare('SELECT * FROM pending_questions').all() as Array<Record<string, unknown>>;
         for (const r of pq) {
           if (typeof r.session_id === 'string' && keepIds.has(r.session_id)) {
             replaceRow(live, 'pending_questions', r);
@@ -283,9 +275,7 @@ async function restorePerAgent(args: PerAgentArgs): Promise<RestoreResult> {
         }
       }
       if (tableExistsIn(src, 'pending_approvals')) {
-        const pa = src
-          .prepare('SELECT * FROM pending_approvals')
-          .all() as Array<Record<string, unknown>>;
+        const pa = src.prepare('SELECT * FROM pending_approvals').all() as Array<Record<string, unknown>>;
         for (const r of pa) {
           if (typeof r.session_id === 'string' && keepIds.has(r.session_id)) {
             replaceRow(live, 'pending_approvals', r);
@@ -309,9 +299,9 @@ async function restorePerAgent(args: PerAgentArgs): Promise<RestoreResult> {
 }
 
 function tableExistsIn(db: Database.Database, name: string): boolean {
-  const row = db
-    .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1")
-    .get(name) as { '1': number } | undefined;
+  const row = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1").get(name) as
+    | { '1': number }
+    | undefined;
   return row !== undefined;
 }
 
