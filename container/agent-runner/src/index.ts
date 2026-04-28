@@ -79,6 +79,11 @@ async function main(): Promise<void> {
       args: ['run', mcpServerPath],
       env: {},
     },
+    ollama: {
+      command: 'bun',
+      args: ['run', path.join(path.dirname(mcpServerPath), '..', 'ollama-mcp-stdio.ts')],
+      env: {},
+    },
   };
 
   for (const [name, serverConfig] of Object.entries(config.mcpServers)) {
