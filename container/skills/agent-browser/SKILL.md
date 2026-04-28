@@ -118,6 +118,58 @@ agent-browser state load auth.json
 agent-browser open https://app.example.com/dashboard
 ```
 
+### Logged-in sites (Bloomberg, Substack, paywalls, internal apps)
+
+Sites that require login, 2FA, captchas, or have aggressive bot detection
+can't be logged into headlessly from inside the container. Instead, the user
+captures a real-browser session on the host with `/add-site-login`, and you
+load the saved state before browsing.
+
+**Before navigating to any external URL, check the index:**
+
+```bash
+[ -f /workspace/agent/browser-states/index.json ] && \
+  cat /workspace/agent/browser-states/index.json
+```
+
+The index maps domains to state files, e.g.:
+
+```json
+{
+  "bloomberg.com": { "file": "bloomberg.com.json", "url": "...", "savedAt": "..." },
+  "substack.com":  { "file": "substack.com.json",  "url": "...", "savedAt": "..." }
+}
+```
+
+**If the target URL's hostname (stripped of leading `www.`) matches an entry,
+load the state first, then open:**
+
+```bash
+agent-browser state load /workspace/agent/browser-states/bloomberg.com.json
+agent-browser open https://www.bloomberg.com/news/articles/...
+```
+
+State must be loaded *before* `open` for that domain. Subdomains generally
+share cookies with the registrable domain, so an entry for `bloomberg.com`
+covers `www.bloomberg.com`.
+
+**If you hit a paywall or login wall on a domain that has a saved state**,
+the cookies are stale. Do **not** try to log in headlessly — surface this to
+the user instead:
+
+> "Your saved login for `<domain>` looks expired — run `/add-site-login` to
+> refresh it."
+
+**If a user asks the agent to read a paywalled or logged-in site that has no
+saved state**, point them at the skill rather than failing silently:
+
+> "I don't have a saved login for `<domain>`. Run `/add-site-login` from
+> Claude Code on your laptop to capture one."
+
+Multi-account: index keys may be `<domain>#<label>` (e.g. `substack.com#work`)
+for users with multiple accounts on the same domain. Pick by label if context
+makes it obvious; otherwise ask.
+
 ### Cookies & Storage
 
 ```bash
