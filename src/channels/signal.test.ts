@@ -381,9 +381,7 @@ describe('SignalAdapter', () => {
         dataMessage: {
           timestamp: 1700000000000,
           message: 'check this PDF',
-          attachments: [
-            { id: 'att-pdf-001', contentType: 'application/pdf', filename: 'report.pdf', size: 12345 },
-          ],
+          attachments: [{ id: 'att-pdf-001', contentType: 'application/pdf', filename: 'report.pdf', size: 12345 }],
         },
       });
 
@@ -412,9 +410,7 @@ describe('SignalAdapter', () => {
         dataMessage: {
           timestamp: 1700000000000,
           // no `message` field — attachment-only
-          attachments: [
-            { id: 'att-doc-001', contentType: 'application/pdf', filename: 'silent.pdf', size: 999 },
-          ],
+          attachments: [{ id: 'att-doc-001', contentType: 'application/pdf', filename: 'silent.pdf', size: 999 }],
         },
       });
 
