@@ -90,6 +90,12 @@ a saved state, the cookies are stale. The agent should surface that to the
 user with: *"Your saved login for `<domain>` looks expired — run
 `/add-site-login` to refresh."* It should not try to log in headlessly.
 
+The container actually uses two browser tools: `agent-browser` (default) and
+`stealth-browser` (for sites with anti-bot fingerprinting like PerimeterX).
+A storageState file produced by this skill works with both — they share the
+same Playwright JSON format and the same `/workspace/agent/browser-states/`
+mount. Whichever the agent picks, no re-capture is needed.
+
 ## Refreshing an expired login
 
 Run this skill again with the same URL (and same label if used). The capture

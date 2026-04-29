@@ -122,8 +122,8 @@ agent-browser open https://app.example.com/dashboard
 
 Sites that require login, 2FA, captchas, or have aggressive bot detection
 can't be logged into headlessly from inside the container. Instead, the user
-captures a real-browser session on the host with `/add-site-login`, and you
-load the saved state before browsing.
+captures a real-browser session on the host with `/add-site-login`. The saved
+cookies live at `/workspace/agent/browser-states/<domain>.json`.
 
 **Before navigating to any external URL, check the index:**
 
@@ -141,21 +141,26 @@ The index maps domains to state files, e.g.:
 }
 ```
 
-**If the target URL's hostname (stripped of leading `www.`) matches an entry,
-load the state first, then open:**
+**If the target URL's hostname (stripped of leading `www.`) matches an entry
+in the index, switch to the `stealth-browser` tool — not `agent-browser`.**
+
+`stealth-browser` is a sidecar built on `rebrowser-playwright` that adds
+fingerprint evasions for sites that block stock automation (PerimeterX,
+Cloudflare, Akamai). See `container/skills/stealth-browser/SKILL.md` for the
+full command surface. Typical article-reading flow:
 
 ```bash
-agent-browser state load /workspace/agent/browser-states/bloomberg.com.json
-agent-browser open https://www.bloomberg.com/news/articles/...
+stealth-browser extract-text https://www.bloomberg.com/news/articles/... \
+  --state /workspace/agent/browser-states/bloomberg.com.json
 ```
 
-State must be loaded *before* `open` for that domain. Subdomains generally
-share cookies with the registrable domain, so an entry for `bloomberg.com`
-covers `www.bloomberg.com`.
+Subdomains share cookies with the registrable domain, so an entry for
+`bloomberg.com` covers `www.bloomberg.com`.
 
-**If you hit a paywall or login wall on a domain that has a saved state**,
-the cookies are stale. Do **not** try to log in headlessly — surface this to
-the user instead:
+**If `stealth-browser` returns what looks like a block page** (PerimeterX
+"Press & Hold", Cloudflare interstitial, suspicious "Just a moment..." title),
+the cookies are stale or the site has tightened detection. Do **not** retry
+headlessly — surface this to the user:
 
 > "Your saved login for `<domain>` looks expired — run `/add-site-login` to
 > refresh it."
@@ -167,8 +172,14 @@ saved state**, point them at the skill rather than failing silently:
 > Claude Code on your laptop to capture one."
 
 Multi-account: index keys may be `<domain>#<label>` (e.g. `substack.com#work`)
-for users with multiple accounts on the same domain. Pick by label if context
-makes it obvious; otherwise ask.
+for users with multiple accounts on the same domain. The corresponding state
+file is `<domain>--<label>.json`. Pick by label if context makes it obvious;
+otherwise ask.
+
+**`agent-browser state load` is still available** but should only be used for
+saved logins on domains that *aren't* in the index above (e.g. a one-off
+manual capture you make in-session). For anything captured via
+`/add-site-login`, prefer `stealth-browser`.
 
 ### Cookies & Storage
 
