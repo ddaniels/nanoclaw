@@ -30,7 +30,6 @@ ARG BUN_VERSION=1.3.12
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
-        chromium \
         fonts-liberation \
         fonts-noto-color-emoji \
         libgbm1 \
@@ -56,9 +55,27 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
        fi \
     && rm -rf /var/lib/apt/lists/*
 
-# Chromium path for agent-browser / Playwright consumers
-ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium
-ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
+# Brave Browser. Used in place of Debian's `chromium` package because stock
+# Chromium gets fingerprinted/blocked by anti-bot systems (PerimeterX,
+# Cloudflare Turnstile, Akamai). Google Chrome and Microsoft Edge don't ship
+# arm64 Linux builds; Brave does. Brave is Chromium-family, so Playwright
+# drives it identically — the different binary (different version string,
+# Brave-branded UA, vendor patches) clears most fingerprint-based blocks.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    curl -fsSL https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg \
+        -o /usr/share/keyrings/brave-browser-archive-keyring.gpg && \
+    echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main" \
+        > /etc/apt/sources.list.d/brave-browser-release.list && \
+    apt-get update && apt-get install -y --no-install-recommends \
+        brave-browser \
+    && rm -rf /var/lib/apt/lists/*
+
+# Browser path for agent-browser / Playwright consumers. PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+# is the env var Playwright honors when chromium.launch() is called without
+# an explicit executablePath; Brave is Chromium-family so this works unchanged.
+ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/brave-browser
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/brave-browser
 # Belt-and-braces: prevent Playwright's postinstall from downloading its own
 # ~300MB Chromium. We've already installed the system one above.
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
