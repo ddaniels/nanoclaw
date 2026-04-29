@@ -33,6 +33,12 @@ interface IndexEntry {
   url: string;
   label?: string;
   savedAt: string;
+  // Set by the in-container `mark-login-suspect` helper when the agent
+  // observes a block-page response from a saved-cookie request. Cleared
+  // on the next /add-site-login by virtue of full overwrite below.
+  suspect?: boolean;
+  suspectAt?: string;
+  suspectReason?: string;
 }
 
 type Index = Record<string, IndexEntry>;
@@ -211,6 +217,10 @@ async function main(): Promise<void> {
     fs.chmodSync(outputPath, 0o600);
 
     const index = readIndex(indexPath);
+    // Full replacement of the entry — explicitly drops any prior
+    // suspect/suspectAt/suspectReason keys. Re-capturing IS the "clear
+    // suspect flag" mechanism; the in-container `mark-login-suspect`
+    // helper sets those fields, this overwrite removes them.
     index[indexKey] = {
       file: filename,
       url: args.url,

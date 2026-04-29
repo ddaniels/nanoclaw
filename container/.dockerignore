@@ -1,5 +1,2 @@
 agent-runner/node_modules
 agent-runner/dist
-stealth-browser/node_modules
-stealth-browser/dist
-stealth-browser/*.tgz

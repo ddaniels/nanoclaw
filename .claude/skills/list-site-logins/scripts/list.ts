@@ -20,6 +20,9 @@ interface IndexEntry {
   url: string;
   label?: string;
   savedAt: string;
+  suspect?: boolean;
+  suspectAt?: string;
+  suspectReason?: string;
 }
 
 type Index = Record<string, IndexEntry>;
@@ -78,6 +81,7 @@ function main(): void {
       domain,
       label: e.label || '',
       savedAt: e.savedAt,
+      suspect: e.suspect ? 'yes' : '',
       file: e.file,
     };
   });
@@ -85,6 +89,7 @@ function main(): void {
     domain: Math.max(6, ...rows.map((r) => r.domain.length)),
     label: Math.max(5, ...rows.map((r) => r.label.length)),
     savedAt: Math.max(20, ...rows.map((r) => r.savedAt.length)),
+    suspect: Math.max(7, ...rows.map((r) => r.suspect.length)),
   };
 
   const header =
@@ -93,6 +98,8 @@ function main(): void {
     'LABEL'.padEnd(widths.label) +
     '  ' +
     'SAVED AT'.padEnd(widths.savedAt) +
+    '  ' +
+    'SUSPECT'.padEnd(widths.suspect) +
     '  FILE';
   console.log(header);
   console.log('-'.repeat(header.length));
@@ -104,10 +111,17 @@ function main(): void {
         '  ' +
         r.savedAt.padEnd(widths.savedAt) +
         '  ' +
+        r.suspect.padEnd(widths.suspect) +
+        '  ' +
         r.file,
     );
   }
   console.log(`\n${entries.length} saved login(s).`);
+
+  const suspectCount = rows.filter((r) => r.suspect).length;
+  if (suspectCount > 0) {
+    console.log(`${suspectCount} marked suspect — re-run /add-site-login on those domains to clear the flag.`);
+  }
 }
 
 main();

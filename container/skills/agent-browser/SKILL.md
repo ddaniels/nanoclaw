@@ -136,34 +136,30 @@ The index maps domains to state files, e.g.:
 
 ```json
 {
-  "bloomberg.com": { "file": "bloomberg.com.json", "url": "...", "savedAt": "..." },
-  "substack.com":  { "file": "substack.com.json",  "url": "...", "savedAt": "..." }
+  "bloomberg.com": { "file": "bloomberg.com.json", "url": "...", "savedAt": "..." }
 }
 ```
 
 **If the target URL's hostname (stripped of leading `www.`) matches an entry
-in the index, switch to the `stealth-browser` tool — not `agent-browser`.**
+in the index, do not use `agent-browser` for that URL.** Use the Scrapfly
+MCP tools instead — see `container/skills/scrapfly/SKILL.md` for the full
+flow. Quick version:
 
-`stealth-browser` is a sidecar built on `rebrowser-playwright` that adds
-fingerprint evasions for sites that block stock automation (PerimeterX,
-Cloudflare, Akamai). See `container/skills/stealth-browser/SKILL.md` for the
-full command surface. Typical article-reading flow:
-
-```bash
-stealth-browser extract-text https://www.bloomberg.com/news/articles/... \
-  --state /workspace/agent/browser-states/bloomberg.com.json
 ```
+1. cookies=$(cookie-string <domain>)        # exits non-zero if suspect
+2. call mcp__scrapfly__web_get_page (or web_scrape) with url + cookies
+3. on a block-page response: mark-login-suspect <domain> "<reason>"
+   and surface to user — do not retry
+```
+
+Why two tools: `agent-browser` is fast and good for normal browsing, but
+gets fingerprinted/blocked on tier-1 anti-bot sites (PerimeterX, Cloudflare,
+Akamai). Scrapfly is a hosted scraping API with residential infrastructure
+that those defenses trust. The captured cookies pass through Scrapfly's
+`cookies` parameter so the request lands as the user, authenticated.
 
 Subdomains share cookies with the registrable domain, so an entry for
 `bloomberg.com` covers `www.bloomberg.com`.
-
-**If `stealth-browser` returns what looks like a block page** (PerimeterX
-"Press & Hold", Cloudflare interstitial, suspicious "Just a moment..." title),
-the cookies are stale or the site has tightened detection. Do **not** retry
-headlessly — surface this to the user:
-
-> "Your saved login for `<domain>` looks expired — run `/add-site-login` to
-> refresh it."
 
 **If a user asks the agent to read a paywalled or logged-in site that has no
 saved state**, point them at the skill rather than failing silently:
@@ -173,13 +169,13 @@ saved state**, point them at the skill rather than failing silently:
 
 Multi-account: index keys may be `<domain>#<label>` (e.g. `substack.com#work`)
 for users with multiple accounts on the same domain. The corresponding state
-file is `<domain>--<label>.json`. Pick by label if context makes it obvious;
-otherwise ask.
+file is `<domain>--<label>.json`. Pass `<domain>#<label>` to `cookie-string`.
+Pick by label if context makes it obvious; otherwise ask.
 
-**`agent-browser state load` is still available** but should only be used for
-saved logins on domains that *aren't* in the index above (e.g. a one-off
+**`agent-browser state load` is still available** but should only be used
+for saved logins on domains that *aren't* in the index above (e.g. a one-off
 manual capture you make in-session). For anything captured via
-`/add-site-login`, prefer `stealth-browser`.
+`/add-site-login`, prefer Scrapfly.
 
 ### Cookies & Storage
 

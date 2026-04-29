@@ -23,6 +23,7 @@ ARG CLAUDE_CODE_VERSION=2.1.116
 ARG AGENT_BROWSER_VERSION=latest
 ARG VERCEL_VERSION=latest
 ARG BUN_VERSION=1.3.12
+ARG MCP_REMOTE_VERSION=0.1.38
 
 # ---- System dependencies -----------------------------------------------------
 # tini: correct PID 1 / signal forwarding so outbound.db writes finalize on
@@ -49,6 +50,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         ca-certificates \
         curl \
         git \
+        jq \
         tini \
         unzip \
     && if [ "$INSTALL_CJK_FONTS" = "true" ]; then \
@@ -107,21 +109,20 @@ RUN --mount=type=cache,target=/root/.cache/pnpm \
 RUN --mount=type=cache,target=/root/.cache/pnpm \
     pnpm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
 
-# ---- stealth-browser sidecar -------------------------------------------------
-# Sidecar to agent-browser. Used by the agent for sites with a captured
-# logged-in storageState (see container/skills/agent-browser/SKILL.md and
-# container/skills/stealth-browser/SKILL.md). Built on rebrowser-playwright,
-# a fork of Playwright with rebrowser-patches baked in for fingerprint
-# evasion against bot-detection services like PerimeterX.
-COPY stealth-browser /tmp/stealth-browser
+# mcp-remote bridges HTTP MCP servers (like Scrapfly's hosted endpoint at
+# mcp.scrapfly.io/mcp) to the stdio MCP transport the agent SDK expects.
+# Used by per-group container.json mcpServers entries that target HTTP
+# endpoints rather than locally-installed servers.
 RUN --mount=type=cache,target=/root/.cache/pnpm \
-    cd /tmp/stealth-browser && \
-    pnpm install --frozen-lockfile --ignore-workspace && \
-    pnpm run build && \
-    pnpm pack && \
-    TGZ="$(ls /tmp/stealth-browser/stealth-browser-*.tgz | head -n1)" && \
-    pnpm install -g "$TGZ" && \
-    cd / && rm -rf /tmp/stealth-browser
+    pnpm install -g "mcp-remote@${MCP_REMOTE_VERSION}"
+
+# In-container helpers for the saved-login → Scrapfly flow. cookie-string
+# turns a Playwright storageState into a Scrapfly-compatible Cookie header
+# string. mark-login-suspect tags an index.json entry as burned so the
+# agent stops trying to use it until /add-site-login refreshes it.
+COPY cookie-string.sh /usr/local/bin/cookie-string
+COPY mark-login-suspect.sh /usr/local/bin/mark-login-suspect
+RUN chmod +x /usr/local/bin/cookie-string /usr/local/bin/mark-login-suspect
 
 # ---- Entrypoint --------------------------------------------------------------
 COPY entrypoint.sh /app/entrypoint.sh

@@ -90,11 +90,17 @@ a saved state, the cookies are stale. The agent should surface that to the
 user with: *"Your saved login for `<domain>` looks expired — run
 `/add-site-login` to refresh."* It should not try to log in headlessly.
 
-The container actually uses two browser tools: `agent-browser` (default) and
-`stealth-browser` (for sites with anti-bot fingerprinting like PerimeterX).
-A storageState file produced by this skill works with both — they share the
-same Playwright JSON format and the same `/workspace/agent/browser-states/`
-mount. Whichever the agent picks, no re-capture is needed.
+Inside the container, `agent-browser` is the default for normal browsing.
+For any domain captured by this skill, the agent instead routes through
+the **Scrapfly MCP tools** — Scrapfly is a hosted scraping API that defeats
+the anti-bot defenses (PerimeterX, Cloudflare, Akamai) that block in-container
+browsers. The captured cookies are loaded into Scrapfly's `cookies`
+parameter so the request lands as the user, authenticated. No re-capture
+is needed when the routing flips between tools.
+
+If a saved login gets server-flagged (cookies burned), the agent marks the
+entry `suspect: true` in `index.json` and stops trying. Re-running this
+skill clears the suspect flag (the entry is overwritten on capture).
 
 ## Refreshing an expired login
 
