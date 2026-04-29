@@ -56,14 +56,20 @@ When the user invokes this skill:
      --group <agent-group-id> \
      --url <login-url> \
      [--label <label>] \
-     [--domain <override>]
+     [--domain <override>] \
+     [--signal-file <path>]
    ```
    The script:
    - Opens a Chrome window (real fingerprint, persistent profile in a temp
      dir for the duration of this capture).
    - Navigates to the login URL.
-   - Prints "Press Enter when you're fully logged in..." and waits on stdin.
-   - On Enter: calls `context.storageState({ path: ... })`, writes to
+   - Waits for the user to indicate login is complete: by default, prints
+     "Press Enter when you're fully logged in..." and reads stdin. With
+     `--signal-file <path>`, polls for the file's existence instead — the
+     caller `touch`es the file when done. Use this when invoking from a
+     harness that can't pass stdin through (e.g. another agent running the
+     script in the background).
+   - On signal: calls `context.storageState({ path: ... })`, writes to
      `groups/<folder>/browser-states/<domain>[--<label>].json` with mode
      `0600`, updates `groups/<folder>/browser-states/index.json`, and exits.
 

@@ -25,6 +25,7 @@ interface Args {
   url: string;
   label?: string;
   domain?: string;
+  signalFile?: string;
 }
 
 interface IndexEntry {
@@ -57,10 +58,15 @@ function parseArgs(argv: string[]): Args {
     } else if (flag === '--domain') {
       out.domain = value;
       i++;
+    } else if (flag === '--signal-file') {
+      out.signalFile = value;
+      i++;
     }
   }
   if (!out.group || !out.url) {
-    console.error('Usage: capture.ts --group <id> --url <login-url> [--label <label>] [--domain <override>]');
+    console.error(
+      'Usage: capture.ts --group <id> --url <login-url> [--label <label>] [--domain <override>] [--signal-file <path>]',
+    );
     process.exit(2);
   }
   return out as Args;
@@ -107,6 +113,21 @@ async function waitForEnter(prompt: string): Promise<void> {
       resolve();
     }),
   );
+}
+
+/**
+ * Alternative to waitForEnter for environments that can't pass stdin
+ * through (e.g. running this script from another agent's tool harness).
+ * Caller passes --signal-file <path>; the script polls until the file
+ * appears, then deletes it and proceeds.
+ */
+async function waitForSignalFile(signalPath: string): Promise<void> {
+  console.log(`Waiting for signal file: ${signalPath}`);
+  console.log(`(create the file when login is complete: \`touch ${signalPath}\`)`);
+  while (!fs.existsSync(signalPath)) {
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  fs.unlinkSync(signalPath);
 }
 
 async function main(): Promise<void> {
@@ -177,9 +198,13 @@ async function main(): Promise<void> {
 
     console.log('Chrome is open. Log in to the site, complete any 2FA / captcha,');
     console.log('and once you can see your logged-in home page or dashboard,');
-    console.log('come back here and press Enter.\n');
-
-    await waitForEnter('Press Enter when fully logged in... ');
+    if (args.signalFile) {
+      console.log(`come back and \`touch ${args.signalFile}\` to signal completion.\n`);
+      await waitForSignalFile(args.signalFile);
+    } else {
+      console.log('come back here and press Enter.\n');
+      await waitForEnter('Press Enter when fully logged in... ');
+    }
 
     console.log('\nCapturing session state...');
     await context.storageState({ path: outputPath });
