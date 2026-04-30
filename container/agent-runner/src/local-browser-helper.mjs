@@ -4,37 +4,43 @@
 // response on stdout, exits.
 //
 // Why Node and not Bun: Bun's WebSocket client doesn't complete the CDP
-// upgrade handshake against Chrome — connectOverCDP hangs at "ws connecting".
-// Same Playwright code under Node 22 works fine.
+// upgrade handshake against Chrome — connect hangs at "ws connecting".
+// Same code under Node 22 works fine.
 //
 // Why we resolve the hostname to an IP before connecting: Chrome's CDP
 // rejects WebSocket Host headers that aren't an IP address or "localhost".
-// Connecting to "host.docker.internal:9222" makes Playwright send
+// Connecting to "host.docker.internal:9222" makes puppeteer send
 // `Host: host.docker.internal:9222`, which Chrome rejects. Resolving to
 // the IP first makes the Host header `<ip>:9222`, which Chrome accepts.
 // This lets Chrome stay bound to 127.0.0.1 (no LAN exposure) while still
 // being reachable from the container via Docker Desktop's vpnkit forwarding.
+//
+// Why puppeteer-core and not playwright-core: Playwright's connectOverCDP
+// calls Browser.setDownloadBehavior at connect time, which user-launched
+// Chrome rejects with "Browser context management is not supported." That
+// breaks the connect entirely. Puppeteer-core is built for this case and
+// connects without browser-level configuration.
 
 import { lookup } from 'node:dns/promises';
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-import { chromium } from 'playwright-core';
+import puppeteer from 'puppeteer-core';
 
 const DEFAULT_HOST = 'host.docker.internal';
 const DEFAULT_PORT = '9222';
 const SCREENSHOT_DIR = '/workspace/agent/local-browser-screenshots';
 
-async function resolveCdpUrl() {
+async function resolveBrowserUrl() {
   const host = process.env.LOCAL_BROWSER_CDP_HOST || DEFAULT_HOST;
   const port = process.env.LOCAL_BROWSER_CDP_PORT || DEFAULT_PORT;
   const { address } = await lookup(host);
 
   // The container has HTTP_PROXY set to the OneCLI credential gateway. Without
-  // this, Playwright's /json/version fetch gets routed through the proxy and
+  // this, puppeteer's /json/version fetch gets routed through the proxy and
   // returns 400 — the gateway doesn't know what to do with a non-credentialed
   // local request. The CDP endpoint never needs credential injection, so add
-  // the resolved address to NO_PROXY before Playwright starts.
+  // the resolved address to NO_PROXY before puppeteer starts.
   const existing = process.env.NO_PROXY || process.env.no_proxy || '';
   const bypass = [host, address, '127.0.0.1', 'localhost'].join(',');
   process.env.NO_PROXY = existing ? `${existing},${bypass}` : bypass;
@@ -43,19 +49,16 @@ async function resolveCdpUrl() {
   return `http://${address}:${port}`;
 }
 
-async function withBrowser(fn) {
-  const cdpUrl = await resolveCdpUrl();
-  const browser = await chromium.connectOverCDP(cdpUrl);
+async function withPage(fn) {
+  const browserURL = await resolveBrowserUrl();
+  const browser = await puppeteer.connect({ browserURL });
+  let page;
   try {
-    const context = browser.contexts()[0] ?? (await browser.newContext());
-    const page = await context.newPage();
-    try {
-      return await fn(page);
-    } finally {
-      await page.close().catch(() => {});
-    }
+    page = await browser.newPage();
+    return await fn(page);
   } finally {
-    await browser.close().catch(() => {});
+    if (page) await page.close().catch(() => {});
+    await browser.disconnect().catch(() => {});
   }
 }
 
@@ -64,9 +67,9 @@ async function fetchPage(args) {
   if (!url || typeof url !== 'string') throw new Error('url is required');
   const waitMs = typeof args.wait_ms === 'number' ? args.wait_ms : 3000;
 
-  return withBrowser(async (page) => {
+  return withPage(async (page) => {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-    if (waitMs > 0) await page.waitForTimeout(waitMs);
+    if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
 
     const finalUrl = page.url();
     const title = await page.title();
@@ -95,9 +98,9 @@ async function screenshot(args) {
   if (!url || typeof url !== 'string') throw new Error('url is required');
   const fullPage = args.full_page === true;
 
-  return withBrowser(async (page) => {
+  return withPage(async (page) => {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-    await page.waitForTimeout(1500);
+    await new Promise((r) => setTimeout(r, 1500));
 
     const screenshotPath = `${SCREENSHOT_DIR}/${Date.now()}-screenshot.png`;
     await mkdir(dirname(screenshotPath), { recursive: true });

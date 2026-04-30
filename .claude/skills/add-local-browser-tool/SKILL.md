@@ -111,7 +111,7 @@ Should print a JSON blob starting with `"Browser": "Chrome/..."`. If not:
 ## Phase 4: Rebuild the container
 
 The MCP tool source already lives in-tree (this is a fork-only feature). The
-container image just needs the new `playwright-core` dependency, which was
+container image just needs the new `puppeteer-core` dependency, which was
 added to `container/agent-runner/package.json`:
 
 ```bash
@@ -175,11 +175,18 @@ A tab in the dedicated Chrome window is stuck on a Cloudflare or PerimeterX
 challenge. Bring the window forward, dismiss the challenge once (it's
 sticky for the profile), and retry.
 
-### Bun + Playwright incompatibility
+### Bun + CDP incompatibility
 
 The MCP tool spawns a Node subprocess (`node /app/src/local-browser-helper.mjs ...`)
 because Bun's WebSocket client doesn't complete CDP's upgrade handshake.
-Don't try to inline the Playwright calls into the Bun-side TypeScript file.
+Don't try to inline the puppeteer calls into the Bun-side TypeScript file.
+
+### Why puppeteer-core, not playwright-core
+
+Playwright's `connectOverCDP` calls `Browser.setDownloadBehavior` at connect
+time, which user-launched Chrome rejects with "Browser context management
+is not supported." Puppeteer-core is built for connecting to existing
+Chrome and doesn't issue browser-level commands on connect.
 
 ## Removal
 

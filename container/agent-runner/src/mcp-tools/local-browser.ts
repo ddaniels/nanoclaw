@@ -3,8 +3,10 @@
  *
  * The Bun-side tool spawns a Node subprocess (`local-browser-helper.mjs`)
  * per call because Bun's WebSocket client doesn't complete the CDP upgrade
- * handshake against Chrome — Playwright's `connectOverCDP` hangs under Bun
- * but works fine under Node 22.
+ * handshake against Chrome — connecting hangs under Bun but works fine
+ * under Node 22. The helper uses puppeteer-core (not playwright-core)
+ * because Playwright's connectOverCDP calls Browser.setDownloadBehavior at
+ * connect time, which user-launched Chrome rejects.
  *
  * Setup is host-side: `/add-local-browser-tool` skill installs a launchd
  * plist that runs Chrome with `--remote-debugging-port=9222`,
