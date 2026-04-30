@@ -16,12 +16,14 @@
         <string>--no-default-browser-check</string>
         <string>--disable-features=ChromeWhatsNewUI</string>
         <!--
-            AutomationControlled is the blink feature that sets
-            navigator.webdriver = true when CDP is attached.
-            Disabling it removes the most-checked PerimeterX/Cloudflare
-            bot signal so the agent's tabs look like normal user tabs.
+            We deliberately do NOT set --disable-blink-features=AutomationControlled
+            here, even though it'd suppress navigator.webdriver = true. Chrome
+            classifies it as an unsupported flag and shows a yellow infobar
+            ("Stability and security will suffer") that's both visible to the
+            operator and a fingerprintable surface itself. The helper's
+            evaluateOnNewDocument shim shadows navigator.webdriver before any
+            page script runs, which achieves the same goal without the infobar.
         -->
-        <string>--disable-blink-features=AutomationControlled</string>
     </array>
 
     <key>RunAtLoad</key>
