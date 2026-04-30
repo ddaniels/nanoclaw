@@ -142,6 +142,28 @@ tail -f logs/nanoclaw.log | grep -i local-browser
 
 Look for the helper subprocess being spawned and returning JSON.
 
+## Phase 6: Quality of life — keep the window out of the way
+
+Once the smoke test passes, the dedicated Chrome window can be parked on its
+own Space so it doesn't pop up on whichever Desktop you're currently using
+when the agent opens a new tab.
+
+Tell the user:
+
+> The dedicated Chrome window is going to stay running 24/7 — let's get it
+> out of your face.
+>
+> **Recommended: pin it to its own Space.**
+>
+> 1. Open Mission Control (F3, or three-finger swipe up).
+> 2. Click the `+` at the top-right to add a new Desktop.
+> 3. Drag the NanoClaw Chrome window onto that new Desktop.
+> 4. Right-click the NanoClaw Chrome dock icon → **Options → Assign To → Desktop on Display 1** (the new one). Now every window and new tab from that Chrome instance stays on that Desktop.
+>
+> **Alternative: minimize.** Cmd+M (or yellow button) the window. New tabs the agent opens don't un-minimize it. Caveat: macOS may throttle rendering of minimized windows, which could slow lazy-loaded paywall scripts on some sites — hasn't been a problem so far, but flag it if you see odd behavior.
+>
+> Avoid Cmd+H (Hide) — same throttling concern *and* you lose easy access to the window for re-logins.
+
 ## Troubleshooting
 
 ### Tool returns "ECONNREFUSED" or "dns lookup failed"
