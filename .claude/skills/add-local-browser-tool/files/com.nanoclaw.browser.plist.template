@@ -15,6 +15,13 @@
         <string>--no-first-run</string>
         <string>--no-default-browser-check</string>
         <string>--disable-features=ChromeWhatsNewUI</string>
+        <!--
+            AutomationControlled is the blink feature that sets
+            navigator.webdriver = true when CDP is attached.
+            Disabling it removes the most-checked PerimeterX/Cloudflare
+            bot signal so the agent's tabs look like normal user tabs.
+        -->
+        <string>--disable-blink-features=AutomationControlled</string>
     </array>
 
     <key>RunAtLoad</key>

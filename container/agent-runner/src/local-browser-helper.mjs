@@ -49,12 +49,50 @@ async function resolveBrowserUrl() {
   return `http://${address}:${port}`;
 }
 
+// Stealth patches injected before any page script runs. PerimeterX,
+// Cloudflare Turnstile, and similar bot walls check these properties to
+// detect CDP-attached / automation-controlled browsers. We pair this with
+// --disable-blink-features=AutomationControlled at the Chrome layer.
+function applyStealth() {
+  // navigator.webdriver — the canonical "is this automation?" tell.
+  Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+
+  // navigator.plugins — automation-controlled Chrome usually returns an
+  // empty PluginArray. Real Chrome has at least the PDF viewer plugin.
+  Object.defineProperty(navigator, 'plugins', {
+    get: () => [
+      { name: 'Chrome PDF Plugin' },
+      { name: 'Chrome PDF Viewer' },
+      { name: 'Native Client' },
+    ],
+  });
+
+  // navigator.languages — automation usually has only ["en-US"].
+  Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+
+  // window.chrome — automation-controlled Chrome is missing some sub-objects.
+  if (window.chrome && !window.chrome.runtime) {
+    window.chrome.runtime = {};
+  }
+
+  // Permissions.query for "notifications" returns "denied" under automation
+  // but "default" / "prompt" in normal Chrome.
+  const originalQuery = window.navigator.permissions?.query;
+  if (originalQuery) {
+    window.navigator.permissions.query = (params) =>
+      params.name === 'notifications'
+        ? Promise.resolve({ state: Notification.permission })
+        : originalQuery.call(window.navigator.permissions, params);
+  }
+}
+
 async function withPage(fn) {
   const browserURL = await resolveBrowserUrl();
   const browser = await puppeteer.connect({ browserURL });
   let page;
   try {
     page = await browser.newPage();
+    await page.evaluateOnNewDocument(applyStealth);
     return await fn(page);
   } finally {
     if (page) await page.close().catch(() => {});
