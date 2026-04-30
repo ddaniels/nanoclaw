@@ -29,6 +29,17 @@ async function resolveCdpUrl() {
   const host = process.env.LOCAL_BROWSER_CDP_HOST || DEFAULT_HOST;
   const port = process.env.LOCAL_BROWSER_CDP_PORT || DEFAULT_PORT;
   const { address } = await lookup(host);
+
+  // The container has HTTP_PROXY set to the OneCLI credential gateway. Without
+  // this, Playwright's /json/version fetch gets routed through the proxy and
+  // returns 400 — the gateway doesn't know what to do with a non-credentialed
+  // local request. The CDP endpoint never needs credential injection, so add
+  // the resolved address to NO_PROXY before Playwright starts.
+  const existing = process.env.NO_PROXY || process.env.no_proxy || '';
+  const bypass = [host, address, '127.0.0.1', 'localhost'].join(',');
+  process.env.NO_PROXY = existing ? `${existing},${bypass}` : bypass;
+  process.env.no_proxy = process.env.NO_PROXY;
+
   return `http://${address}:${port}`;
 }
 
