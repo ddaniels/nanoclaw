@@ -10,6 +10,8 @@ const envConfig = readEnvFile([
   'ASSISTANT_NAME',
   'ASSISTANT_HAS_OWN_NUMBER',
   'OLLAMA_ADMIN_TOOLS',
+  'LOCAL_BROWSER_CDP_HOST',
+  'LOCAL_BROWSER_CDP_PORT',
   'ONECLI_URL',
   'ONECLI_API_KEY',
   'TZ',
@@ -34,6 +36,8 @@ export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || envConfig.ASSISTANT_
 export const ASSISTANT_HAS_OWN_NUMBER =
   (process.env.ASSISTANT_HAS_OWN_NUMBER || envConfig.ASSISTANT_HAS_OWN_NUMBER) === 'true';
 export const OLLAMA_ADMIN_TOOLS = (process.env.OLLAMA_ADMIN_TOOLS || envConfig.OLLAMA_ADMIN_TOOLS) === 'true';
+export const LOCAL_BROWSER_CDP_HOST = process.env.LOCAL_BROWSER_CDP_HOST || envConfig.LOCAL_BROWSER_CDP_HOST;
+export const LOCAL_BROWSER_CDP_PORT = process.env.LOCAL_BROWSER_CDP_PORT || envConfig.LOCAL_BROWSER_CDP_PORT;
 
 // Absolute paths needed for container mounts
 const PROJECT_ROOT = process.cwd();
